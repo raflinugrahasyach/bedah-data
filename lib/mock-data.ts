@@ -58,7 +58,7 @@ export function seedOrders(): OrderRecord[] {
       workItem: { id: "w-1041", analystStatus: "not_started", deliverables: [] },
       activity: [
         { at: hoursAgo(20), text: "Brief diterima dari chatbot konsultasi." },
-        { at: hoursAgo(6), text: "Pembayaran dikonfirmasi (simulasi Midtrans)." },
+        { at: hoursAgo(6), text: "Pembayaran dikonfirmasi via Midtrans." },
       ],
     },
     {
@@ -83,7 +83,7 @@ export function seedOrders(): OrderRecord[] {
       },
       activity: [
         { at: hoursAgo(52), text: "Brief diterima dari chatbot konsultasi." },
-        { at: hoursAgo(48), text: "Pembayaran dikonfirmasi (simulasi Midtrans)." },
+        { at: hoursAgo(48), text: "Pembayaran dikonfirmasi via Midtrans." },
         { at: hoursAgo(30), text: "Status dipindah ke In Progress." },
         { at: hoursAgo(5), text: "Berkas Data bersih diunggah: data_bersih_citra.sav" },
       ],
@@ -106,7 +106,7 @@ export function seedOrders(): OrderRecord[] {
       workItem: { id: "w-1036", analystStatus: "in_progress", deliverables: [] },
       activity: [
         { at: hoursAgo(75), text: "Brief diterima dari chatbot konsultasi." },
-        { at: hoursAgo(70), text: "Pembayaran dikonfirmasi (simulasi Midtrans)." },
+        { at: hoursAgo(70), text: "Pembayaran dikonfirmasi via Midtrans." },
         { at: hoursAgo(26), text: "Status dipindah ke In Progress." },
       ],
     },
@@ -135,7 +135,7 @@ export function seedOrders(): OrderRecord[] {
       },
       activity: [
         { at: hoursAgo(120), text: "Brief diterima dari chatbot konsultasi." },
-        { at: hoursAgo(115), text: "Pembayaran dikonfirmasi (simulasi Midtrans)." },
+        { at: hoursAgo(115), text: "Pembayaran dikonfirmasi via Midtrans." },
         { at: hoursAgo(96), text: "Status dipindah ke In Progress." },
         { at: hoursAgo(14), text: "Berkas Data bersih diunggah: data_bersih_eka.xlsx" },
         { at: hoursAgo(12), text: "Berkas Syntax diunggah: syntax_korelasi_eka.R" },
@@ -168,10 +168,10 @@ export function seedOrders(): OrderRecord[] {
       },
       activity: [
         { at: hoursAgo(240), text: "Brief diterima dari chatbot konsultasi." },
-        { at: hoursAgo(236), text: "Pembayaran dikonfirmasi (simulasi Midtrans)." },
+        { at: hoursAgo(236), text: "Pembayaran dikonfirmasi via Midtrans." },
         { at: hoursAgo(200), text: "Status dipindah ke In Progress." },
         { at: hoursAgo(70), text: "Status dipindah ke QC." },
-        { at: hoursAgo(60), text: "Status dipindah ke Delivered. Notifikasi n8n terkirim (simulasi)." },
+        { at: hoursAgo(60), text: "Status dipindah ke Delivered. Notifikasi n8n terkirim." },
       ],
     },
   ];

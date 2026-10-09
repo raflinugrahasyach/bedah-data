@@ -86,7 +86,7 @@ export async function generateConsultationTurn(input: ConsultationInput): Promis
     throw new Error("GEMINI_API_KEY environment variable is not configured.");
   }
 
-  const modelName = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+  const modelName = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
   const genAI = new GoogleGenerativeAI(apiKey);
 
   const model = genAI.getGenerativeModel({

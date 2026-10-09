@@ -21,7 +21,7 @@ export async function POST(
   const parsed = await parseBody(request, uploadSchema);
   if (parsed.error) return parsed.error;
   return respond(
-    attachDeliverable(id, parsed.data.kind, {
+    await attachDeliverable(id, parsed.data.kind, {
       name: parsed.data.name,
       size: parsed.data.size,
     }),
@@ -37,5 +37,5 @@ export async function DELETE(
   const { id } = await ctx.params;
   const parsed = await parseBody(request, deleteSchema);
   if (parsed.error) return parsed.error;
-  return respond(removeDeliverable(id, parsed.data.kind), (order) => ({ order }));
+  return respond(await removeDeliverable(id, parsed.data.kind), (order) => ({ order }));
 }

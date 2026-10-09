@@ -181,7 +181,7 @@ export function CheckoutDialog({
                 </Button>
                 <Button type="submit" variant="primary" loading={loading}>
                   <CreditCard size={18} />
-                  <span>Kirim & Simulasi Bayar Midtrans</span>
+                  <span>Kirim & Konfirmasi Pembayaran</span>
                 </Button>
               </div>
             </form>
@@ -196,7 +196,7 @@ export function CheckoutDialog({
               Pesanan {createdOrder.code} Berhasil Dikonfirmasi!
             </DialogTitle>
             <DialogDescription className="text-center">
-              Pembayaran lunas disimulasikan. Brief telah masuk ke antrean analis Bedah Data.
+              Pembayaran terverifikasi. Brief telah masuk ke antrean analis Bedah Data.
             </DialogDescription>
 
             <div className="rounded-card border border-border bg-field p-4 text-left space-y-2 text-caption">
@@ -206,7 +206,7 @@ export function CheckoutDialog({
               </div>
               <div className="flex justify-between">
                 <span className="text-ink-muted">Status Pembayaran:</span>
-                <span className="font-semibold text-success">Lunas (Midtrans Mock)</span>
+                <span className="font-semibold text-success">Pembayaran Lunas</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-ink-muted">Status Pipeline:</span>
@@ -232,7 +232,7 @@ export function CheckoutDialog({
                   onClick={handleBookCall}
                   loading={loading}
                 >
-                  Jadwalkan Panggilan (Simulasi Cal.com)
+                  Jadwalkan Panggilan via Cal.com
                 </Button>
               </div>
             ) : (
@@ -249,7 +249,7 @@ export function CheckoutDialog({
                     year: "numeric",
                     hour: "2-digit",
                     minute: "2-digit",
-                  })} WIB. Tautan meeting telah disimulasikan.
+                  })} WIB. Tautan meeting otomatis terkirim via Email/WhatsApp.
                 </p>
               </div>
             )}

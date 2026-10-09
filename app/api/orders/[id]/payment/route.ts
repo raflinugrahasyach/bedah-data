@@ -1,11 +1,11 @@
 import { respond } from "@/lib/api-response";
 import { markPaid } from "@/services/orders";
 
-/** Simulates the Midtrans payment webhook confirming the order is paid. */
+/** Confirms order payment and updates Supabase database. */
 export async function POST(
   _request: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
   const { id } = await ctx.params;
-  return respond(markPaid(id), (order) => ({ order }));
+  return respond(await markPaid(id), (order) => ({ order }));
 }

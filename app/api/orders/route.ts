@@ -19,12 +19,13 @@ const createOrderSchema = z.object({
 });
 
 export async function GET() {
-  return NextResponse.json({ orders: listOrders() });
+  const orders = await listOrders();
+  return NextResponse.json({ orders });
 }
 
-/** Submits a completed brief: creates the client, order, brief, and work item (mock Midtrans token included). */
+/** Submits a completed brief: creates client, order, and brief in Supabase. */
 export async function POST(request: Request) {
   const parsed = await parseBody(request, createOrderSchema);
   if (parsed.error) return parsed.error;
-  return respond(createOrder(parsed.data), undefined, 201);
+  return respond(await createOrder(parsed.data), undefined, 201);
 }

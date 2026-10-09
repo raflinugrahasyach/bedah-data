@@ -12,7 +12,7 @@ export async function generateMetadata(props: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await props.params;
-  const res = getOrder(id);
+  const res = await getOrder(id);
   if (!res.ok) return { title: "Pesanan Tidak Ditemukan" };
   return {
     title: `Lembar Kerja ${res.data.code} — Analis`,
@@ -25,7 +25,7 @@ async function OrderContent({
   paramsPromise: Promise<{ id: string }>;
 }) {
   const { id } = await paramsPromise;
-  const res = getOrder(id);
+  const res = await getOrder(id);
 
   if (!res.ok) {
     return (

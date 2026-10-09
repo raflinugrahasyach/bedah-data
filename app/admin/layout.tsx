@@ -57,10 +57,10 @@ export default function AdminLayout({
         <div className="border-t border-border p-4">
           <div className="flex items-center gap-2 text-caption text-ink-muted">
             <ShieldCheck size={16} className="text-primary" />
-            <span>Mode Mock Analis Aktif</span>
+            <span>Pipeline Analisis Aktif</span>
           </div>
           <p className="mt-1 text-[11px] text-ink-muted leading-relaxed">
-            Data tersimpan di memori runtime. Siap dihubungkan ke Supabase.
+            Terhubung langsung ke database Supabase PostgreSQL.
           </p>
         </div>
       </aside>

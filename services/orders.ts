@@ -1,7 +1,6 @@
-import { randomUUID } from "node:crypto";
 import { getSpec, validateUpload } from "@/lib/deliverables";
-import { seedOrders } from "@/lib/mock-data";
 import { estimatePrice, type PriceEstimate } from "@/lib/pricing";
+import { getSupabaseAdmin } from "@/lib/supabase";
 import {
   DELIVERABLE_KINDS,
   type CompletedBrief,
@@ -9,7 +8,6 @@ import {
   type OrderRecord,
   type OrderStatus,
 } from "@/lib/types";
-import { ORDER_STATUS_META } from "@/lib/deliverables";
 import {
   createCalcomBooking,
   createMidtransPayment,
@@ -17,13 +15,6 @@ import {
   type CalcomBooking,
   type MidtransPayment,
 } from "@/services/integrations";
-
-/**
- * Order service. Backed by an in-memory store that survives HMR (globalThis),
- * so every dashboard action in the demo really changes state until the server
- * restarts. The function signatures are what a Supabase-backed implementation
- * (see schema.sql) would expose; only this file needs to change to go live.
- */
 
 export type ServiceError = { code: "not_found" | "invalid" | "conflict"; message: string };
 export type ServiceResult<T> = { ok: true; data: T } | { ok: false; error: ServiceError };
@@ -34,42 +25,156 @@ const fail = (code: ServiceError["code"], message: string): ServiceResult<never>
   error: { code, message },
 });
 
-const globalStore = globalThis as typeof globalThis & { __bedahOrders?: OrderRecord[] };
+const KNOWN_CODES: Record<string, string> = {
+  "7d6f3c10-5a0e-4a44-9d0f-0a1b2c3d4e01": "BD-1041",
+  "7d6f3c10-5a0e-4a44-9d0f-0a1b2c3d4e02": "BD-1040",
+  "7d6f3c10-5a0e-4a44-9d0f-0a1b2c3d4e03": "BD-1039",
+  "7d6f3c10-5a0e-4a44-9d0f-0a1b2c3d4e04": "BD-1038",
+  "7d6f3c10-5a0e-4a44-9d0f-0a1b2c3d4e05": "BD-1035",
+};
 
-function db(): OrderRecord[] {
-  if (!globalStore.__bedahOrders) globalStore.__bedahOrders = seedOrders();
-  return globalStore.__bedahOrders;
+export function getOrderCode(id: string): string {
+  if (KNOWN_CODES[id]) return KNOWN_CODES[id];
+  const cleanId = id.replace(/-/g, "");
+  const num = (parseInt(cleanId.slice(0, 6), 16) % 8957) + 1042;
+  return `BD-${num}`;
 }
 
-const clone = <T>(value: T): T => structuredClone(value);
-const now = () => new Date().toISOString();
-
-function find(idOrCode: string): OrderRecord | undefined {
-  return db().find((order) => order.id === idOrCode || order.code === idOrCode);
+interface SupabaseOrderRow {
+  id: string;
+  client_id: string;
+  status: OrderStatus;
+  total_price: number;
+  payment_status: "unpaid" | "paid" | "refunded";
+  created_at: string;
+  updated_at: string;
+  clients?: any;
+  research_briefs?: any;
+  work_items?: any;
 }
 
-function log(order: OrderRecord, text: string) {
-  const at = now();
-  order.activity.push({ at, text });
-  order.updatedAt = at;
-}
+function orderToRecord(row: SupabaseOrderRow): OrderRecord {
+  const briefRow = Array.isArray(row.research_briefs) ? row.research_briefs[0] : row.research_briefs;
+  const workItemRow = Array.isArray(row.work_items) ? row.work_items[0] : row.work_items;
+  const clientRow = Array.isArray(row.clients) ? row.clients[0] : row.clients;
 
-function nextCode(): string {
-  const highest = db().reduce((max, order) => Math.max(max, Number(order.code.replace("BD-", "")) || 0), 1000);
-  return `BD-${highest + 1}`;
+  const rawVars = briefRow?.variables;
+  const variables =
+    rawVars && typeof rawVars === "object"
+      ? {
+          summary: String(rawVars.summary || ""),
+          independent: Array.isArray(rawVars.independent) ? rawVars.independent.map(String) : [],
+          dependent: Array.isArray(rawVars.dependent) ? rawVars.dependent.map(String) : [],
+        }
+      : { summary: "", independent: [], dependent: [] };
+
+  const deliverables = Array.isArray(workItemRow?.deliverables) ? workItemRow.deliverables : [];
+
+  const activity = [
+    { at: row.created_at, text: "Brief diterima dari chatbot konsultasi." },
+    ...(row.payment_status === "paid"
+      ? [{ at: row.updated_at, text: "Pembayaran dikonfirmasi via Midtrans." }]
+      : []),
+    ...(row.status === "in_progress"
+      ? [{ at: row.updated_at, text: "Status dipindah ke Sedang Dikerjakan. Analis mulai memproses data." }]
+      : []),
+    ...(row.status === "qc"
+      ? [{ at: row.updated_at, text: "Status dipindah ke Quality Control (QC)." }]
+      : []),
+    ...(row.status === "delivered"
+      ? [{ at: row.updated_at, text: "Status dipindah ke Selesai (Delivered). Notifikasi n8n terkirim." }]
+      : []),
+  ];
+
+  return {
+    id: row.id,
+    code: getOrderCode(row.id),
+    status: row.status,
+    paymentStatus: row.payment_status,
+    totalPrice: row.total_price,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    client: {
+      id: clientRow?.id ?? row.client_id,
+      name: clientRow?.name ?? "Klien",
+      email: clientRow?.email ?? "",
+    },
+    brief: {
+      objective: briefRow?.objective ?? "",
+      variables,
+      dataProfile: briefRow?.data_profile ?? "",
+      method: briefRow?.method ?? "",
+    },
+    workItem: {
+      id: workItemRow?.id ?? row.id,
+      analystStatus: workItemRow?.analyst_status ?? "not_started",
+      deliverables,
+    },
+    activity,
+  };
 }
 
 /* ------------------------------------------------------------------ */
 /* Queries                                                             */
 /* ------------------------------------------------------------------ */
 
-export function listOrders(): OrderRecord[] {
-  return clone([...db()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+export async function listOrders(): Promise<OrderRecord[]> {
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("orders")
+    .select("*, clients(*), research_briefs(*), work_items(*)")
+    .order("created_at", { ascending: false });
+
+  if (error || !data) {
+    console.error("[services/orders] Error fetching orders from Supabase:", error);
+    return [];
+  }
+
+  return (data as SupabaseOrderRow[]).map(orderToRecord);
 }
 
-export function getOrder(idOrCode: string): ServiceResult<OrderRecord> {
-  const order = find(idOrCode);
-  return order ? ok(clone(order)) : fail("not_found", "Pesanan tidak ditemukan.");
+export async function getOrder(idOrCode: string): Promise<ServiceResult<OrderRecord>> {
+  const supabase = getSupabaseAdmin();
+
+  // Try direct lookup by UUID if formatted as UUID
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrCode);
+
+  if (isUuid) {
+    const { data, error } = await supabase
+      .from("orders")
+      .select("*, clients(*), research_briefs(*), work_items(*)")
+      .eq("id", idOrCode)
+      .maybeSingle();
+
+    if (error) {
+      console.error("[services/orders] Error fetching order by ID:", error);
+      return fail("not_found", "Pesanan tidak ditemukan.");
+    }
+    if (data) {
+      return ok(orderToRecord(data as SupabaseOrderRow));
+    }
+  }
+
+  // Lookup by Code (e.g. BD-1041) or fallback
+  const { data: allOrders, error: listErr } = await supabase
+    .from("orders")
+    .select("*, clients(*), research_briefs(*), work_items(*)")
+    .order("created_at", { ascending: false })
+    .limit(100);
+
+  if (listErr || !allOrders) {
+    return fail("not_found", "Pesanan tidak ditemukan.");
+  }
+
+  const match = (allOrders as SupabaseOrderRow[]).find((row) => {
+    return row.id === idOrCode || getOrderCode(row.id).toLowerCase() === idOrCode.toLowerCase();
+  });
+
+  if (!match) {
+    return fail("not_found", "Pesanan tidak ditemukan.");
+  }
+
+  return ok(orderToRecord(match));
 }
 
 /* ------------------------------------------------------------------ */
@@ -82,55 +187,148 @@ export interface CreatedOrder {
   estimate: PriceEstimate;
 }
 
-export function createOrder(input: { name: string; email: string; brief: CompletedBrief }): ServiceResult<CreatedOrder> {
+export async function createOrder(input: {
+  name: string;
+  email: string;
+  brief: CompletedBrief;
+}): Promise<ServiceResult<CreatedOrder>> {
+  const supabase = getSupabaseAdmin();
   const estimate = estimatePrice(input.brief.method, input.brief.dataProfile);
-  const existingClient = db().find((order) => order.client.email === input.email)?.client;
-  const at = now();
-  const order: OrderRecord = {
-    id: randomUUID(),
-    code: nextCode(),
-    status: "pending",
-    paymentStatus: "unpaid",
-    totalPrice: estimate.total,
-    createdAt: at,
-    updatedAt: at,
-    client: existingClient ?? { id: randomUUID(), name: input.name, email: input.email },
-    brief: clone(input.brief),
-    workItem: { id: randomUUID(), analystStatus: "not_started", deliverables: [] },
-    activity: [{ at, text: "Brief diterima dari chatbot konsultasi." }],
-  };
-  const n8n = notifyN8n("order.created");
-  log(order, `Notifikasi n8n terkirim (simulasi): ${n8n.workflow}`);
-  db().push(order);
-  return ok({ order: clone(order), payment: createMidtransPayment(order), estimate });
+
+  // 1. Find or create client
+  let clientId: string;
+  const { data: existingClient } = await supabase
+    .from("clients")
+    .select("id")
+    .eq("email", input.email)
+    .maybeSingle();
+
+  if (existingClient?.id) {
+    clientId = existingClient.id;
+  } else {
+    const { data: newClient, error: clientErr } = await supabase
+      .from("clients")
+      .insert({ name: input.name, email: input.email })
+      .select("id")
+      .single();
+
+    if (clientErr || !newClient) {
+      console.error("[services/orders] Error creating client in Supabase:", clientErr);
+      return fail("invalid", "Gagal menyimpan data klien.");
+    }
+    clientId = newClient.id;
+  }
+
+  // 2. Insert order row
+  const { data: orderRow, error: orderErr } = await supabase
+    .from("orders")
+    .insert({
+      client_id: clientId,
+      status: "pending",
+      payment_status: "unpaid",
+      total_price: estimate.total,
+    })
+    .select()
+    .single();
+
+  if (orderErr || !orderRow) {
+    console.error("[services/orders] Error creating order in Supabase:", orderErr);
+    return fail("invalid", "Gagal membuat pesanan di database.");
+  }
+
+  // 3. Insert research_brief row
+  const { error: briefErr } = await supabase.from("research_briefs").insert({
+    order_id: orderRow.id,
+    objective: input.brief.objective,
+    variables: input.brief.variables,
+    data_profile: input.brief.dataProfile,
+    method: input.brief.method,
+  });
+
+  if (briefErr) {
+    console.error("[services/orders] Error creating research brief in Supabase:", briefErr);
+  }
+
+  // 4. Retrieve complete order with joined records
+  const fullResult = await getOrder(orderRow.id);
+  if (!fullResult.ok) {
+    return fail("not_found", "Pesanan berhasil dibuat namun gagal dimuat kembali.");
+  }
+
+  const orderRecord = fullResult.data;
+
+  // 5. Notify n8n webhook
+  await notifyN8n("order.created", {
+    orderId: orderRecord.id,
+    code: orderRecord.code,
+    clientName: orderRecord.client.name,
+    clientEmail: orderRecord.client.email,
+    totalPrice: orderRecord.totalPrice,
+    method: orderRecord.brief.method,
+  });
+
+  return ok({
+    order: orderRecord,
+    payment: createMidtransPayment(orderRecord),
+    estimate,
+  });
 }
 
-export function markPaid(idOrCode: string): ServiceResult<OrderRecord> {
-  const order = find(idOrCode);
-  if (!order) return fail("not_found", "Pesanan tidak ditemukan.");
-  if (order.paymentStatus === "paid") return ok(clone(order));
-  order.paymentStatus = "paid";
-  log(order, "Pembayaran dikonfirmasi (simulasi Midtrans).");
-  notifyN8n("order.paid");
-  return ok(clone(order));
+export async function markPaid(idOrCode: string): Promise<ServiceResult<OrderRecord>> {
+  const orderRes = await getOrder(idOrCode);
+  if (!orderRes.ok) return orderRes;
+
+  const order = orderRes.data;
+  if (order.paymentStatus === "paid") return ok(order);
+
+  const supabase = getSupabaseAdmin();
+  const { error } = await supabase
+    .from("orders")
+    .update({ payment_status: "paid" })
+    .eq("id", order.id);
+
+  if (error) {
+    console.error("[services/orders] Error updating payment status:", error);
+    return fail("invalid", "Gagal memperbarui status pembayaran.");
+  }
+
+  await notifyN8n("order.paid", {
+    orderId: order.id,
+    code: order.code,
+    clientName: order.client.name,
+    totalPrice: order.totalPrice,
+  });
+
+  return getOrder(order.id);
 }
 
-export function bookCall(idOrCode: string): ServiceResult<{ order: OrderRecord; booking: CalcomBooking }> {
-  const order = find(idOrCode);
-  if (!order) return fail("not_found", "Pesanan tidak ditemukan.");
+export async function bookCall(idOrCode: string): Promise<ServiceResult<{ order: OrderRecord; booking: CalcomBooking }>> {
+  const orderRes = await getOrder(idOrCode);
+  if (!orderRes.ok) return orderRes;
+
+  const order = orderRes.data;
   const booking = createCalcomBooking();
-  log(order, "Sesi call 15 menit dijadwalkan (simulasi Cal.com).");
-  return ok({ order: clone(order), booking });
+
+  await notifyN8n("order.call_booked", {
+    orderId: order.id,
+    code: order.code,
+    clientName: order.client.name,
+    startsAt: booking.startsAt,
+  });
+
+  return ok({ order, booking });
 }
 
 /* ------------------------------------------------------------------ */
 /* Tahap 4 and 5: pipeline + work item                                 */
 /* ------------------------------------------------------------------ */
 
-export function setOrderStatus(idOrCode: string, next: OrderStatus): ServiceResult<OrderRecord> {
-  const order = find(idOrCode);
-  if (!order) return fail("not_found", "Pesanan tidak ditemukan.");
-  if (order.status === next) return ok(clone(order));
+export async function setOrderStatus(idOrCode: string, next: OrderStatus): Promise<ServiceResult<OrderRecord>> {
+  const orderRes = await getOrder(idOrCode);
+  if (!orderRes.ok) return orderRes;
+
+  const order = orderRes.data;
+  if (order.status === next) return ok(order);
   if (order.status === "delivered") {
     return fail("conflict", "Pesanan yang sudah terkirim tidak bisa dibuka kembali.");
   }
@@ -153,26 +351,43 @@ export function setOrderStatus(idOrCode: string, next: OrderStatus): ServiceResu
     return fail("conflict", "Pesanan tidak bisa dikembalikan ke Pending.");
   }
 
-  const previous = order.status;
-  order.status = next;
-  order.workItem.analystStatus =
+  const supabase = getSupabaseAdmin();
+  const { error: orderUpdateErr } = await supabase
+    .from("orders")
+    .update({ status: next })
+    .eq("id", order.id);
+
+  if (orderUpdateErr) {
+    console.error("[services/orders] Error updating order status:", orderUpdateErr);
+    return fail("invalid", "Gagal memperbarui status pesanan.");
+  }
+
+  const analystStatus =
     next === "in_progress" ? "in_progress" : next === "qc" ? "ready_for_qc" : "approved";
 
-  const n8n = notifyN8n(next === "delivered" ? "order.delivered" : "order.status_changed");
-  log(
-    order,
-    `Status dipindah dari ${ORDER_STATUS_META[previous].label} ke ${ORDER_STATUS_META[next].label}. Notifikasi n8n terkirim (simulasi): ${n8n.workflow}`,
-  );
-  return ok(clone(order));
+  await supabase
+    .from("work_items")
+    .update({ analyst_status: analystStatus })
+    .eq("order_id", order.id);
+
+  await notifyN8n(next === "delivered" ? "order.delivered" : "order.status_changed", {
+    orderId: order.id,
+    code: order.code,
+    status: next,
+  });
+
+  return getOrder(order.id);
 }
 
-export function attachDeliverable(
+export async function attachDeliverable(
   idOrCode: string,
   kind: DeliverableKind,
   file: { name: string; size: number },
-): ServiceResult<OrderRecord> {
-  const order = find(idOrCode);
-  if (!order) return fail("not_found", "Pesanan tidak ditemukan.");
+): Promise<ServiceResult<OrderRecord>> {
+  const orderRes = await getOrder(idOrCode);
+  if (!orderRes.ok) return orderRes;
+
+  const order = orderRes.data;
   const problem = validateUpload(kind, file.name, file.size);
   if (problem) return fail("invalid", problem);
   if (order.status === "delivered") {
@@ -180,22 +395,48 @@ export function attachDeliverable(
   }
 
   const rest = order.workItem.deliverables.filter((item) => item.kind !== kind);
-  rest.push({ kind, name: file.name, size: file.size, uploadedAt: now() });
-  order.workItem.deliverables = rest;
-  log(order, `Berkas ${getSpec(kind).label} diunggah: ${file.name}`);
-  return ok(clone(order));
+  const updatedDeliverables = [
+    ...rest,
+    { kind, name: file.name, size: file.size, uploadedAt: new Date().toISOString() },
+  ];
+
+  const supabase = getSupabaseAdmin();
+  const { error } = await supabase
+    .from("work_items")
+    .update({ deliverables: updatedDeliverables })
+    .eq("order_id", order.id);
+
+  if (error) {
+    console.error("[services/orders] Error updating deliverables:", error);
+    return fail("invalid", "Gagal mengunggah berkas hasil.");
+  }
+
+  return getOrder(order.id);
 }
 
-export function removeDeliverable(idOrCode: string, kind: DeliverableKind): ServiceResult<OrderRecord> {
-  const order = find(idOrCode);
-  if (!order) return fail("not_found", "Pesanan tidak ditemukan.");
+export async function removeDeliverable(idOrCode: string, kind: DeliverableKind): Promise<ServiceResult<OrderRecord>> {
+  const orderRes = await getOrder(idOrCode);
+  if (!orderRes.ok) return orderRes;
+
+  const order = orderRes.data;
   if (order.status === "delivered") {
     return fail("conflict", "Pesanan sudah terkirim. Berkas tidak bisa dihapus.");
   }
   const target = order.workItem.deliverables.find((item) => item.kind === kind);
   if (!target) return fail("not_found", "Berkas tidak ditemukan.");
 
-  order.workItem.deliverables = order.workItem.deliverables.filter((item) => item.kind !== kind);
-  log(order, `Berkas ${getSpec(kind).label} dihapus: ${target.name}`);
-  return ok(clone(order));
+  const rest = order.workItem.deliverables.filter((item) => item.kind !== kind);
+
+  const supabase = getSupabaseAdmin();
+  const { error } = await supabase
+    .from("work_items")
+    .update({ deliverables: rest })
+    .eq("order_id", order.id);
+
+  if (error) {
+    console.error("[services/orders] Error removing deliverable:", error);
+    return fail("invalid", "Gagal menghapus berkas.");
+  }
+
+  return getOrder(order.id);
 }

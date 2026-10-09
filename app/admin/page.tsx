@@ -7,8 +7,8 @@ export const metadata = {
   title: "Pipeline Pesanan Analis",
 };
 
-export default function AdminPage() {
-  const orders = listOrders();
+export default async function AdminPage() {
+  const orders = await listOrders();
 
   return (
     <div className="space-y-6">

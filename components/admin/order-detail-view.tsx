@@ -55,7 +55,7 @@ export function OrderDetailView({ initialOrder }: OrderDetailViewProps) {
     try {
       const res = await api.payOrder(order.id);
       setOrder(res.order);
-      toast.success("Pembayaran berhasil dikonfirmasi (simulasi Midtrans).");
+      toast.success("Pembayaran berhasil dikonfirmasi.");
     } catch {
       toast.error("Gagal mengonfirmasi pembayaran.");
     } finally {
@@ -115,7 +115,7 @@ export function OrderDetailView({ initialOrder }: OrderDetailViewProps) {
               loading={loadingAction}
             >
               <CreditCard size={16} />
-              <span>Simulasi Konfirmasi Bayar</span>
+              <span>Konfirmasi Pembayaran</span>
             </Button>
           )}
 

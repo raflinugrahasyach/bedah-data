@@ -9,11 +9,11 @@ const isMockValue = (value: string | undefined) =>
 
 export const env = {
   appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-  supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://mock-project.supabase.co",
-  supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "mock-anon-key",
-  geminiModel: process.env.GEMINI_MODEL ?? "gemini-mock",
+  supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://qmuuxlaamenbpqxouagu.supabase.co",
+  supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+  geminiModel: process.env.GEMINI_MODEL ?? "gemini-3.5-flash-lite",
   calcomLink:
-    process.env.NEXT_PUBLIC_CALCOM_LINK ?? "https://cal.com/mock-bedah-data/konsultasi-15-menit",
+    process.env.NEXT_PUBLIC_CALCOM_LINK ?? "https://cal.com/muhammad-rafli-nugrahasyach-wcctyc/konsultasi",
 } as const;
 
 export const isMock = {

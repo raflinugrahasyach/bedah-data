@@ -12,7 +12,7 @@ export async function GET(
   ctx: { params: Promise<{ id: string }> },
 ) {
   const { id } = await ctx.params;
-  return respond(getOrder(id), (order) => ({ order }));
+  return respond(await getOrder(id), (order) => ({ order }));
 }
 
 export async function PATCH(
@@ -22,5 +22,5 @@ export async function PATCH(
   const { id } = await ctx.params;
   const parsed = await parseBody(request, patchSchema);
   if (parsed.error) return parsed.error;
-  return respond(setOrderStatus(id, parsed.data.status), (order) => ({ order }));
+  return respond(await setOrderStatus(id, parsed.data.status), (order) => ({ order }));
 }
