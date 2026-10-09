@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 
 export function Footer() {
@@ -64,7 +66,7 @@ export function Footer() {
         </div>
 
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border pt-6 text-caption text-ink-muted sm:flex-row">
-          <p>© {new Date().getFullYear()} Bedah Data. Hak cipta dilindungi.</p>
+          <p>© 2026 Bedah Data. Hak cipta dilindungi.</p>
           <div className="flex items-center gap-6">
             <span>Standar Metodologi Akademik</span>
             <span>Kerahasiaan Data Terjamin</span>
