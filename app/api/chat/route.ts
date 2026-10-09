@@ -20,7 +20,7 @@ const bodySchema = z.object({
   }),
 });
 
-/** Tahap 1 consultative chatbot. Gemini is mocked: see services/gemini.ts. */
+/** Tahap 1 consultative chatbot powered by Google Gemini API. */
 export async function POST(request: Request) {
   const parsed = await parseBody(request, bodySchema);
   if (parsed.error) return parsed.error;
@@ -28,7 +28,8 @@ export async function POST(request: Request) {
   try {
     const turn = await generateConsultationTurn(parsed.data);
     return NextResponse.json(turn);
-  } catch {
+  } catch (error) {
+    console.error("[api/chat] Error generating consultation turn:", error);
     return jsonError("upstream_error", "Asisten sedang tidak bisa dihubungi. Coba kirim ulang pesanmu.", 502);
   }
 }
