@@ -1,0 +1,185 @@
+@import "tailwindcss";
+
+/*
+  Bedah Data — design tokens.
+  Source of truth is DESIGN_SYSTEM.md; every value here mirrors it.
+  Palette: "Frost Bright" (no-slop-ui/references/colour-palettes.md), with
+  neutrals kept on the slate/teal hue family. Light theme only.
+*/
+
+:root {
+  color-scheme: light;
+
+  /* Surfaces: page base -> raised section -> floating element */
+  --bg: #f1f5f9;
+  --surface: #f8fafc;
+  --field: #fcfdfe;
+
+  /* Lines */
+  --border: #d5dde7;
+  --border-strong: #7c8ba0;
+
+  /* Text */
+  --ink: #0f172a;
+  --ink-muted: #475569;
+
+  /* Accent (the 10%) */
+  --primary: #0f766e;
+  --primary-hover: #115e59;
+  --primary-press: #134e4a;
+  --primary-tint: #d9ece9;
+  --primary-ink: #0b4f4a;
+  --on-primary: #f8fafc;
+
+  /* Status: always paired with an icon or label, never colour alone */
+  --danger: #be123c;
+  --danger-tint: #fce7ec;
+  --warn: #92400e;
+  --warn-tint: #fdf0cf;
+  --success: #166534;
+  --success-tint: #dcf3e4;
+
+  /* Elevation */
+  --elevation-card: 0 1px 2px rgba(15, 23, 42, 0.06), 0 2px 8px rgba(15, 23, 42, 0.06);
+  --elevation-pop: 0 2px 8px rgba(15, 23, 42, 0.1), 0 0 0 1px rgba(15, 23, 42, 0.06);
+
+  /* Motion */
+  --duration-fast: 120ms;
+  --duration-base: 160ms;
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-field: var(--field);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-press: var(--primary-press);
+  --color-primary-tint: var(--primary-tint);
+  --color-primary-ink: var(--primary-ink);
+  --color-on-primary: var(--on-primary);
+  --color-danger: var(--danger);
+  --color-danger-tint: var(--danger-tint);
+  --color-warn: var(--warn);
+  --color-warn-tint: var(--warn-tint);
+  --color-success: var(--success);
+  --color-success-tint: var(--success-tint);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+
+  /* Type scale. One definition; no inline sizes anywhere else. */
+  --text-display: clamp(2.25rem, 1.4rem + 3.4vw, 4rem);
+  --text-display--line-height: 1.06;
+  --text-display--letter-spacing: -0.025em;
+  --text-h1: clamp(1.75rem, 1.4rem + 1.4vw, 2.5rem);
+  --text-h1--line-height: 1.15;
+  --text-h1--letter-spacing: -0.02em;
+  --text-h2: clamp(1.375rem, 1.2rem + 0.8vw, 1.875rem);
+  --text-h2--line-height: 1.25;
+  --text-h2--letter-spacing: -0.015em;
+  --text-h3: 1.125rem;
+  --text-h3--line-height: 1.4;
+  --text-body-lg: 1.125rem;
+  --text-body-lg--line-height: 1.6;
+  --text-body: 1rem;
+  --text-body--line-height: 1.55;
+  --text-body-sm: 0.875rem;
+  --text-body-sm--line-height: 1.5;
+  --text-caption: 0.8125rem;
+  --text-caption--line-height: 1.4;
+  --text-button: 0.9375rem;
+  --text-button--line-height: 1.25;
+
+  --radius-control: 6px;
+  --radius-card: 8px;
+  --radius-dialog: 10px;
+
+  --shadow-card: var(--elevation-card);
+  --shadow-pop: var(--elevation-pop);
+}
+
+html {
+  background: var(--bg);
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Focus: keyboard / programmatic only, never removed. */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--primary-tint);
+  color: var(--ink);
+}
+
+/* Tabular numerals for money, counts, timers, tables. */
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Overlay / dialog fade. Opacity only, per no-slop-ui motion rules. */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+[data-state="open"].fade {
+  animation: fade-in var(--duration-base) var(--ease-out);
+}
+
+[data-state="closed"].fade {
+  animation: fade-out var(--duration-fast) ease-in;
+}
+
+/* Quiet scrollbars for inner scroll regions (chat, kanban columns). */
+.scroll-quiet {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (forced-colors: active) {
+  :focus-visible {
+    outline-color: Highlight;
+  }
+}
