@@ -1,19 +1,29 @@
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { Navbar } from "@/components/navbar";
+import { Footer } from "@/components/footer";
+import { Hero } from "@/components/landing/hero";
+import { TrustBar } from "@/components/landing/trust-bar";
+import { ProblemSolution } from "@/components/landing/problem-solution";
+import { Services } from "@/components/landing/services";
+import { Workflow } from "@/components/landing/workflow";
+import { Pricing } from "@/components/landing/pricing";
+import { Testimonials } from "@/components/landing/testimonials";
+import { CtaSection } from "@/components/landing/cta-section";
 
-/* Phase 1 holding page. Replaced by the real landing page in Phase 3. */
-export default function Home() {
+export default function HomePage() {
   return (
-    <main id="konten" className="mx-auto flex min-h-svh w-full max-w-2xl flex-col justify-center gap-4 p-6">
-      <h1 className="text-h1 font-semibold">Bedah Data</h1>
-      <p className="text-body-lg text-ink-muted">
-        Fondasi proyek sudah siap. Halaman utama dan chatbot konsultasi dibangun pada fase berikutnya.
-      </p>
-      <div>
-        <Button asChild>
-          <Link href="/">Muat ulang</Link>
-        </Button>
-      </div>
-    </main>
+    <div className="flex min-h-svh flex-col bg-bg">
+      <Navbar />
+      <main id="konten" className="flex-1">
+        <Hero />
+        <TrustBar />
+        <ProblemSolution />
+        <Services />
+        <Workflow />
+        <Pricing />
+        <Testimonials />
+        <CtaSection />
+      </main>
+      <Footer />
+    </div>
   );
 }
